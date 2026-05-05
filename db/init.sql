@@ -1,7 +1,60 @@
 -- Инициализация базы данных для библиотечной информационной системы
 
--- Создание таблиц выполняется через SQLAlchemy migrations
--- Этот файл содержит seed данные для демонстрации
+-- Создание таблиц
+CREATE TABLE IF NOT EXISTS publishers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    city VARCHAR(100),
+    country VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS authors (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    birth_year INTEGER,
+    country VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS books (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(300) NOT NULL,
+    isbn VARCHAR(20) UNIQUE,
+    publication_year INTEGER,
+    pages INTEGER,
+    copies_total INTEGER DEFAULT 1,
+    copies_available INTEGER DEFAULT 1,
+    publisher_id INTEGER REFERENCES publishers(id),
+    genre VARCHAR(100)
+);
+
+CREATE TABLE IF NOT EXISTS book_authors (
+    id SERIAL PRIMARY KEY,
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    author_id INTEGER NOT NULL REFERENCES authors(id)
+);
+
+CREATE TABLE IF NOT EXISTS readers (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    phone VARCHAR(20),
+    address VARCHAR(300),
+    registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS loans (
+    id SERIAL PRIMARY KEY,
+    book_id INTEGER NOT NULL REFERENCES books(id),
+    reader_id INTEGER NOT NULL REFERENCES readers(id),
+    loan_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    due_date TIMESTAMP NOT NULL,
+    return_date TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'active'
+);
+
+-- Seed данные
 
 -- Издательства
 INSERT INTO publishers (name, city, country) VALUES
