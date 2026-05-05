@@ -1,106 +1,97 @@
-# Быстрый старт
+# Quick Start Guide
 
-## Запуск системы за 3 команды
+## Launch in 3 Commands
 
 ```bash
-# 1. Создать .env файл
+# 1. Create .env file
 cp .env.example .env
 
-# 2. Запустить все контейнеры
+# 2. Start all containers
 docker-compose up -d
 
-# 3. Открыть браузер
+# 3. Open browser
 # http://localhost
 ```
 
-## Проверка работы
+## Verify
 
 ```bash
-# Статус контейнеров
+# Container status
 docker-compose ps
 
-# Логи приложения
+# Application logs
 docker-compose logs -f app
 
-# Проверка БД
+# Check database
 docker exec -it library_db psql -U library_user -d library_db -c "\dt"
 ```
 
-## Доступ к сервисам
+## Access Services
 
-- **Веб-интерфейс**: http://localhost
+- **Web Interface**: http://localhost
 - **pgAdmin**: http://localhost:5050
   - Email: admin@library.com
   - Password: admin
 
-## Остановка
+## Stop
 
 ```bash
-# Остановить контейнеры
+# Stop containers
 docker-compose down
 
-# Удалить всё включая данные
+# Remove everything including data
 docker-compose down -v
 ```
 
-## Публичный доступ (для демонстрации преподавателю)
+## Public Access
 
-### Вариант 1: ngrok (рекомендуется)
+### Option 1: ngrok (recommended)
 
 ```bash
-# Скачать: https://ngrok.com/download
+# Download: https://ngrok.com/download
 ngrok http 80
 
-# Получите URL типа: https://abc123.ngrok.io
-# Отправьте этот URL преподавателю
+# Get public URL like: https://abc123.ngrok.io
 ```
 
-### Вариант 2: Показать с телефона
+### Option 2: Local Network
 
 ```bash
-# Узнать IP компьютера
+# Get your IP
 ipconfig  # Windows
 ifconfig  # Linux/Mac
 
-# Открыть на телефоне
+# Access from other device
 # http://192.168.x.x
 ```
 
-## Демонстрация возможностей
-
-1. **Главная страница** - Статистика и дашборд
-2. **16 запросов** - Все запросы из методички
-3. **Экспорт** - PDF и Excel отчеты
-4. **pgAdmin** - Администрирование БД
-5. **API** - REST endpoints
-
 ## Troubleshooting
 
-### Порт 80 занят
+### Port 80 busy
 
 ```bash
-# Изменить в docker-compose.yml
+# Change in docker-compose.yml
 ports:
-  - "8080:80"  # Вместо 80:80
+  - "8080:80"  # Instead of 80:80
 
-# Открыть: http://localhost:8080
+# Open: http://localhost:8080
 ```
 
-### Контейнеры не запускаются
+### Containers not starting
 
 ```bash
-# Пересоздать всё
+# Recreate everything
 docker-compose down -v
 docker-compose build --no-cache
 docker-compose up -d
 ```
 
-### База данных пустая
+### Empty database
 
 ```bash
-# Проверить логи
+# Check logs
 docker-compose logs db
 
-# Вручную загрузить данные
+# Manually load data
 docker exec -i library_db psql -U library_user library_db < db/init.sql
 ```

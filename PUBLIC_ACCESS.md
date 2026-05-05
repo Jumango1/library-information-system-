@@ -1,79 +1,80 @@
-# Настройка публичного доступа через ngrok
+# Public Access Setup
 
-## Вариант 1: ngrok (Рекомендуется)
+## Option 1: ngrok (Recommended)
 
-### Шаг 1: Скачать ngrok
+### Step 1: Download ngrok
 
-1. Открой https://ngrok.com/download
-2. Скачай версию для Windows
-3. Распакуй ngrok.exe в любую папку (например, в папку проекта)
+1. Open https://ngrok.com/download
+2. Choose **Windows (64-bit)**
+3. Download ZIP file
 
-### Шаг 2: Зарегистрироваться (бесплатно)
+### Step 2: Extract
 
-1. Открой https://dashboard.ngrok.com/signup
-2. Зарегистрируйся (можно через Google/GitHub)
-3. Скопируй свой authtoken со страницы: https://dashboard.ngrok.com/get-started/your-authtoken
+Extract `ngrok.exe` to project folder: `C:\Users\Penisan\library-information-system\`
 
-### Шаг 3: Настроить authtoken
+### Step 3: Register (free)
+
+- Open: https://dashboard.ngrok.com/signup
+- Register via Google/GitHub
+- Copy **authtoken** from: https://dashboard.ngrok.com/get-started/your-authtoken
+
+### Step 4: Configure authtoken
+
+Open command prompt in folder with `ngrok.exe`:
 
 ```bash
-# В папке где лежит ngrok.exe
-ngrok config add-authtoken ВАШ_ТОКЕН
+ngrok config add-authtoken YOUR_TOKEN_HERE
 ```
 
-### Шаг 4: Запустить туннель
+### Step 5: Start tunnel
 
 ```bash
-# В папке где лежит ngrok.exe
 ngrok http 80
 ```
 
-### Шаг 5: Получить публичный URL
+### Step 6: Get public URL
 
-После запуска увидишь что-то вроде:
-
+You will see:
 ```
 Forwarding   https://abc123.ngrok-free.app -> http://localhost:80
 ```
 
-**Этот URL можешь отправить преподавателю!** Он будет работать пока ngrok запущен.
+**This URL is publicly accessible.**
 
 ---
 
-## Вариант 2: Cloudflare Tunnel (Альтернатива)
+## Option 2: Cloudflare Tunnel
 
-### Установка
+### Installation
 
 ```bash
-# Скачать: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/
+# Download: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/
 
-# Запустить
+# Run
 cloudflared tunnel --url http://localhost:80
 ```
 
 ---
 
-## Вариант 3: Локальная сеть (Самый простой)
+## Option 3: Local Network
 
-Если преподаватель в той же сети Wi-Fi:
+If on same Wi-Fi network:
 
 ```bash
-# Узнать свой IP
+# Get your IP
 ipconfig
 
-# Найти IPv4 адрес (например: 192.168.1.100)
-# Преподаватель открывает: http://192.168.1.100
+# Find IPv4 address (e.g., 192.168.1.100)
+# Access via: http://192.168.1.100
 ```
 
 ---
 
-## Рекомендация
+## Quick Command (after setup)
 
-**Используй ngrok** - это самый надёжный способ. Займёт 5 минут на установку.
-
-После установки просто запусти:
+Just run in folder with ngrok.exe:
 ```bash
 ngrok http 80
 ```
 
-И получишь публичный URL для демонстрации! 🚀
+Get public URL for remote access.

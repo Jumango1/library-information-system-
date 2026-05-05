@@ -11,6 +11,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
+# TODO: вынести конфиг в отдельный файл, а то хуйня какая-то
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -25,6 +26,7 @@ def index():
 
 @app.route('/api/books')
 def get_books():
+    # просто все книги, без всякой хуйни
     books = Book.query.all()
     return jsonify([{
         'id': b.id,
@@ -59,12 +61,13 @@ def get_loans():
     } for l in loans])
 
 
-# Запросы из методички (Вариант 6)
+# Запросы - основная логика системы
 
 @app.route('/api/query1')
 def query1_books_by_author():
     """Все книги определенного автора"""
     author_name = request.args.get('author', 'Толстой')
+    # join'ы работают, но можно было бы через relationship сделать
     books = db.session.query(Book).join(BookAuthor).join(Author).filter(
         (Author.last_name.ilike(f'%{author_name}%')) |
         (Author.first_name.ilike(f'%{author_name}%'))
@@ -119,6 +122,7 @@ def query4_active_loans():
 def query5_overdue_loans():
     """Просроченные выдачи"""
     today = datetime.utcnow()
+    # TODO: добавить уведомления для просроченных, а то хуй кто вернёт
     loans = Loan.query.filter(
         Loan.status == 'active',
         Loan.due_date < today
@@ -151,6 +155,7 @@ def query7_popular_books():
     """Самые популярные книги (по количеству выдач)"""
     from sqlalchemy import func
 
+    # работает, но медленно на больших данных - надо бы индекс добавить
     popular = db.session.query(
         Book.title,
         func.count(Loan.id).label('loan_count')
@@ -300,6 +305,7 @@ def query16_loan_statistics():
 # Экспорт в Excel
 @app.route('/api/export/excel/<query_name>')
 def export_excel(query_name):
+    # костыль, но работает - вызываем endpoint и берём его результат
     wb = Workbook()
     ws = wb.active
     ws.title = query_name
@@ -345,7 +351,7 @@ def export_pdf(query_name):
     elements.append(title)
     elements.append(Spacer(1, 0.3*inch))
 
-    # Получаем данные
+    # Получаем данные - тот же костыль что и в excel
     endpoint = f'/api/{query_name}'
     with app.test_client() as client:
         response = client.get(endpoint + '?' + request.query_string.decode())
@@ -385,4 +391,5 @@ def export_pdf(query_name):
 
 
 if __name__ == '__main__':
+    # для прода надо бы gunicorn поставить, но пока и так сойдёт
     app.run(host='0.0.0.0', port=5000, debug=True)

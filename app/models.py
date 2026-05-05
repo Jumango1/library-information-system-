@@ -12,6 +12,7 @@ class Publisher(db.Model):
     city = db.Column(db.String(100))
     country = db.Column(db.String(100))
 
+    # backref работает, но лучше бы через back_populates сделать везде
     books = db.relationship('Book', backref='publisher', lazy=True)
 
 
@@ -40,6 +41,7 @@ class Book(db.Model):
     publisher_id = db.Column(db.Integer, db.ForeignKey('publishers.id'))
     genre = db.Column(db.String(100))
 
+    # many-to-many через промежуточную таблицу - классика
     authors = db.relationship('BookAuthor', back_populates='book')
     loans = db.relationship('Loan', backref='book', lazy=True)
 
@@ -78,4 +80,4 @@ class Loan(db.Model):
     loan_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     due_date = db.Column(db.DateTime, nullable=False)
     return_date = db.Column(db.DateTime)
-    status = db.Column(db.String(20), default='active')  # active, returned, overdue
+    status = db.Column(db.String(20), default='active')  # active, returned, overdue - хуйня, надо enum сделать

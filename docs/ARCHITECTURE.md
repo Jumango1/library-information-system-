@@ -1,33 +1,10 @@
-# Архитектура библиотечной информационной системы
+# Architecture Documentation
 
-## Обзор системы
+## System Overview
 
-Библиотечная информационная система построена по принципам **микросервисной архитектуры** с использованием контейнеризации Docker.
+Library information system built on microservices architecture with Docker containerization.
 
-## C4 Model - Диаграммы архитектуры
-
-### Level 1: System Context
-
-```
-                                    ┌─────────────────┐
-                                    │   Преподаватель │
-                                    │   Библиотекарь  │
-                                    │    Читатель     │
-                                    └────────┬────────┘
-                                             │
-                                             │ HTTPS/HTTP
-                                             ▼
-                    ┌────────────────────────────────────────┐
-                    │  Библиотечная информационная система   │
-                    │                                        │
-                    │  • Управление каталогом книг           │
-                    │  • Учет читателей                      │
-                    │  • Выдача и возврат книг               │
-                    │  • Аналитика и отчетность              │
-                    └────────────────────────────────────────┘
-```
-
-### Level 2: Container Diagram
+## Container Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -35,7 +12,7 @@
 │                                                                  │
 │  ┌────────────────┐         ┌──────────────────┐                │
 │  │  Web Browser   │────────▶│  Nginx Container │                │
-│  │  (Пользователь)│         │   Port 80        │                │
+│  │  (User)        │         │   Port 80        │                │
 │  └────────────────┘         └────────┬─────────┘                │
 │                                      │                           │
 │                                      │ Reverse Proxy             │
@@ -72,7 +49,7 @@
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Level 3: Component Diagram (Flask Application)
+## Application Components
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -117,7 +94,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Модель данных (ER-диаграмма)
+## Data Model
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
@@ -162,84 +139,84 @@
 └─────────────────┘         └─────────────────┘
 ```
 
-## Технологический стек
+## Technology Stack
 
 ### Backend
-- **Python 3.11**: Современная версия с улучшенной производительностью
-- **Flask 3.0**: Легковесный веб-фреймворк
-- **SQLAlchemy 3.1**: ORM для работы с БД
-- **Flask-Migrate**: Управление миграциями БД (Alembic)
+- **Python 3.11**: Modern version with improved performance
+- **Flask 3.0**: Lightweight web framework
+- **SQLAlchemy 3.1**: ORM for database operations
+- **Flask-Migrate**: Database migration management (Alembic)
 
 ### Database
-- **PostgreSQL 15**: Надежная реляционная СУБД
-- **psycopg2**: PostgreSQL адаптер для Python
+- **PostgreSQL 15**: Reliable relational DBMS
+- **psycopg2**: PostgreSQL adapter for Python
 
 ### Frontend
-- **Bootstrap 5**: Современный CSS фреймворк
-- **Font Awesome 6**: Иконки
-- **Vanilla JavaScript**: Без зависимостей от фреймворков
+- **Bootstrap 5**: Modern CSS framework
+- **Font Awesome 6**: Icons
+- **Vanilla JavaScript**: No framework dependencies
 
 ### Infrastructure
-- **Docker**: Контейнеризация приложений
-- **Docker Compose**: Оркестрация контейнеров
-- **Nginx**: Reverse proxy и веб-сервер
-- **pgAdmin 4**: Веб-интерфейс для администрирования PostgreSQL
+- **Docker**: Application containerization
+- **Docker Compose**: Container orchestration
+- **Nginx**: Reverse proxy and web server
+- **pgAdmin 4**: Web interface for PostgreSQL administration
 
 ### Export & Reporting
-- **ReportLab**: Генерация PDF отчетов
-- **OpenPyXL**: Экспорт в Excel
+- **ReportLab**: PDF report generation
+- **OpenPyXL**: Excel export
 
-## Паттерны проектирования
+## Design Patterns
 
 ### 1. Repository Pattern
-SQLAlchemy модели инкапсулируют доступ к данным
+SQLAlchemy models encapsulate data access
 
 ### 2. MVC (Model-View-Controller)
-- **Model**: SQLAlchemy модели (models.py)
-- **View**: Jinja2 шаблоны (templates/)
+- **Model**: SQLAlchemy models (models.py)
+- **View**: Jinja2 templates (templates/)
 - **Controller**: Flask routes (app.py)
 
 ### 3. Dependency Injection
-Конфигурация через переменные окружения (.env)
+Configuration via environment variables (.env)
 
 ### 4. Factory Pattern
-Flask application factory для создания экземпляра приложения
+Flask application factory for instance creation
 
-## Безопасность
+## Security
 
-### Реализованные меры
+### Implemented Measures
 
-1. **Изоляция сервисов**: Каждый компонент в отдельном контейнере
-2. **Reverse Proxy**: Nginx скрывает внутреннюю архитектуру
-3. **Переменные окружения**: Секреты не хранятся в коде
-4. **SQL Injection защита**: Использование ORM (SQLAlchemy)
-5. **Сетевая изоляция**: Docker networks
+1. **Service Isolation**: Each component in separate container
+2. **Reverse Proxy**: Nginx hides internal architecture
+3. **Environment Variables**: Secrets not stored in code
+4. **SQL Injection Protection**: Using ORM (SQLAlchemy)
+5. **Network Isolation**: Docker networks
 
-### Рекомендации для production
+### Production Recommendations
 
-- [ ] HTTPS с SSL сертификатами
-- [ ] Аутентификация и авторизация (JWT)
-- [ ] Rate limiting
-- [ ] CORS настройки
-- [ ] Логирование и мониторинг
-- [ ] Backup базы данных
+- HTTPS with SSL certificates
+- Authentication and authorization (JWT)
+- Rate limiting
+- CORS configuration
+- Logging and monitoring
+- Database backup
 
-## Масштабируемость
+## Scalability
 
-### Горизонтальное масштабирование
+### Horizontal Scaling
 
 ```yaml
 # docker-compose.yml
 services:
   app:
     deploy:
-      replicas: 3  # 3 экземпляра Flask
+      replicas: 3  # 3 Flask instances
     
   nginx:
-    # Load balancing между репликами
+    # Load balancing between replicas
 ```
 
-### Вертикальное масштабирование
+### Vertical Scaling
 
 ```yaml
 services:
@@ -251,97 +228,67 @@ services:
           memory: 4G
 ```
 
-## Производительность
+## Performance
 
-### Оптимизации
+### Optimizations
 
-1. **Eager Loading**: Использование `joinedload()` для связанных данных
+1. **Eager Loading**: Using `joinedload()` for related data
 2. **Connection Pooling**: SQLAlchemy pool
-3. **Nginx Caching**: Кеширование статических файлов
-4. **Database Indexes**: На часто запрашиваемых полях
+3. **Nginx Caching**: Static file caching
+4. **Database Indexes**: On frequently queried fields
 
-### Метрики
+### Metrics
 
-- **Response Time**: < 200ms для большинства запросов
-- **Throughput**: 100+ req/sec на одном контейнере
+- **Response Time**: < 200ms for most queries
+- **Throughput**: 100+ req/sec on single container
 - **Database Connections**: Pool size 20
 
-## Мониторинг и логирование
+## Monitoring
 
-### Логи
+### Logs
 
 ```bash
-# Просмотр логов всех сервисов
+# View all service logs
 docker-compose logs -f
 
-# Логи конкретного сервиса
+# Specific service logs
 docker-compose logs -f app
 docker-compose logs -f db
 ```
 
-### Метрики
+### Metrics
 
 ```python
-# В app.py включено SQLAlchemy echo
-SQLALCHEMY_ECHO = True  # Логирование всех SQL запросов
+# SQLAlchemy echo enabled in app.py
+SQLALCHEMY_ECHO = True  # Logs all SQL queries
 ```
 
-## CI/CD Pipeline (рекомендуемый)
+## Backup and Recovery
 
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run tests
-        run: docker-compose -f docker-compose.test.yml up --abort-on-container-exit
-  
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to production
-        run: |
-          docker-compose pull
-          docker-compose up -d
-```
-
-## Backup и восстановление
-
-### Создание backup
+### Creating Backup
 
 ```bash
-# Backup базы данных
+# Database backup
 docker exec library_db pg_dump -U library_user library_db > backup.sql
 
-# Backup с сжатием
+# Compressed backup
 docker exec library_db pg_dump -U library_user library_db | gzip > backup.sql.gz
 ```
 
-### Восстановление
+### Restore
 
 ```bash
-# Восстановление из backup
+# Restore from backup
 docker exec -i library_db psql -U library_user library_db < backup.sql
 ```
 
-## Заключение
+## Summary
 
-Система спроектирована с учетом современных best practices:
+System designed with modern best practices:
 
-✅ **Модульность**: Разделение на независимые компоненты  
-✅ **Масштабируемость**: Легко добавить новые экземпляры  
-✅ **Надежность**: Изоляция сбоев, health checks  
-✅ **Поддерживаемость**: Чистая архитектура, документация  
-✅ **Безопасность**: Изоляция, защита от SQL injection  
-✅ **Производительность**: ORM оптимизации, кеширование  
-
-Идеально подходит для демонстрации на экзамене по архитектуре информационных систем.
+- **Modularity**: Separation into independent components
+- **Scalability**: Easy to add new instances
+- **Reliability**: Failure isolation, health checks
+- **Maintainability**: Clean architecture, documentation
+- **Security**: Isolation, SQL injection protection
+- **Performance**: ORM optimizations, caching

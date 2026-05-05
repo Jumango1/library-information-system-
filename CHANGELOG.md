@@ -2,19 +2,19 @@
 
 ## [1.0.0] - 2026-05-06
 
-### Добавлено
-- ✅ Полная библиотечная информационная система
-- ✅ 16 SQL запросов из методички (Вариант 6)
-- ✅ REST API со всеми endpoints
-- ✅ Веб-интерфейс на Bootstrap 5
-- ✅ Экспорт в PDF и Excel
-- ✅ Docker-контейнеризация (Flask, PostgreSQL, Nginx, pgAdmin)
-- ✅ 100+ записей тестовых данных
-- ✅ Полная документация (README, ARCHITECTURE, QUICKSTART)
-- ✅ SQLAlchemy ORM модели
-- ✅ Миграции базы данных (Flask-Migrate)
+### Added
+- Complete library information system
+- 16 SQL queries with web interface
+- REST API with all endpoints
+- Web interface with Bootstrap 5
+- PDF and Excel export
+- Docker containerization (Flask, PostgreSQL, Nginx, pgAdmin)
+- 100+ test records
+- Full documentation
+- SQLAlchemy ORM models
+- Database migrations (Flask-Migrate)
 
-### Технологии
+### Technologies
 - Python 3.11
 - Flask 3.0
 - PostgreSQL 15
@@ -22,27 +22,26 @@
 - Nginx
 - Bootstrap 5
 
-### Архитектура
-- Микросервисная архитектура
-- MVC паттерн
-- Repository паттерн
+### Architecture
+- Microservices architecture
+- MVC pattern
+- Repository pattern
 - REST API
 - Reverse proxy (Nginx)
 
-### Безопасность
-- Изоляция контейнеров
-- Переменные окружения для секретов
-- SQL Injection защита (ORM)
-- Сетевая изоляция Docker
+### Security
+- Container isolation
+- Environment variables for secrets
+- SQL Injection protection (ORM)
+- Docker network isolation
 
-### Производительность
+### Performance
 - Connection pooling
-- Eager loading для связанных данных
-- Nginx для статических файлов
+- Eager loading for related data
+- Nginx for static files
 - Database indexes
 
 ---
 
-**Статус**: Production Ready ✅  
-**Для**: Магистерский экзамен по архитектуре ИС  
-**Вариант**: 6 (Библиотека)
+**Status**: Production Ready  
+**Version**: 1.0.0
