@@ -770,3 +770,61 @@ def export_database_sqlite():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/import/database/sql', methods=['POST'])
+def import_database_sql():
+    """Импорт БД из SQL файла"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'Файл не найден'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Файл не выбран'}), 400
+
+        if not file.filename.endswith('.sql'):
+            return jsonify({'error': 'Только SQL файлы'}), 400
+
+        # читаем содержимое файла
+        sql_content = file.read().decode('utf-8')
+
+        # очищаем текущую БД
+        tables = ['book_authors', 'loans', 'books', 'readers', 'authors', 'publishers']
+        for table in tables:
+            db.session.execute(text(f'DROP TABLE IF EXISTS {table} CASCADE'))
+        db.session.commit()
+
+        # выполняем SQL из файла
+        # разбиваем на отдельные команды (по точке с запятой)
+        statements = [s.strip() for s in sql_content.split(';') if s.strip()]
+
+        imported_count = 0
+        for statement in statements:
+            # пропускаем комментарии и SET команды
+            if statement.startswith('--') or statement.startswith('SET') or not statement:
+                continue
+
+            try:
+                db.session.execute(text(statement))
+                # считаем количество строк в INSERT (по количеству открывающих скобок после VALUES)
+                if 'INSERT INTO' in statement.upper():
+                    # считаем количество VALUES записей
+                    values_part = statement.upper().split('VALUES', 1)
+                    if len(values_part) > 1:
+                        # считаем количество строк по запятым между скобками
+                        imported_count += values_part[1].count('(')
+            except Exception as e:
+                # логируем ошибку но продолжаем
+                print(f"Ошибка выполнения: {statement[:50]}... - {e}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'imported_records': imported_count,
+            'message': 'База данных успешно импортирована'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
