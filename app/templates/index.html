@@ -156,6 +156,29 @@
             </div>
         </div>
 
+        <!-- Экспорт базы данных -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card" style="border: 2px solid #667eea;">
+                    <div class="card-body">
+                        <h5 class="card-title" style="color: #667eea;"><i class="fas fa-database"></i> Экспорт базы данных</h5>
+                        <p class="card-text">Скачать полную копию базы данных в различных форматах</p>
+                        <div class="btn-group" role="group">
+                            <a href="/api/export/database/sql" class="btn btn-primary" download>
+                                <i class="fas fa-file-code"></i> SQL Dump
+                            </a>
+                            <a href="/api/export/database/csv" class="btn btn-success" download>
+                                <i class="fas fa-file-csv"></i> CSV Архив
+                            </a>
+                            <a href="/api/export/database/sqlite" class="btn btn-info" download>
+                                <i class="fas fa-database"></i> SQLite
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Вкладки -->
         <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">

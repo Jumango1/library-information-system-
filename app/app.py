@@ -4,12 +4,16 @@ from models import db, Book, Author, Reader, Loan, Publisher, BookAuthor
 from config import Config
 from datetime import datetime, timedelta
 import io
+import os
+import zipfile
+import tempfile
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+import pandas as pd
 
 # TODO: вынести конфиг в отдельный файл, а то хуйня какая-то
 app = Flask(__name__)
@@ -393,3 +397,319 @@ def export_pdf(query_name):
 if __name__ == '__main__':
     # для прода надо бы gunicorn поставить, но пока и так сойдёт
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+# Новые функции - создание выдачи и возврат книги
+
+@app.route('/api/loan/create', methods=['POST'])
+def create_loan():
+    """Создать новую выдачу книги"""
+    try:
+        data = request.get_json()
+        book_id = data.get('book_id')
+        reader_id = data.get('reader_id')
+
+        # проверяем что книга есть
+        book = Book.query.get(book_id)
+        if not book:
+            return jsonify({'error': 'Книга не найдена'}), 404
+
+        # проверяем доступность
+        if book.copies_available <= 0:
+            return jsonify({'error': 'Книга недоступна, все экземпляры выданы'}), 400
+
+        # проверяем что читатель существует
+        reader = Reader.query.get(reader_id)
+        if not reader:
+            return jsonify({'error': 'Читатель не найден'}), 404
+
+        # создаём выдачу
+        loan = Loan(
+            book_id=book_id,
+            reader_id=reader_id,
+            loan_date=datetime.utcnow(),
+            due_date=datetime.utcnow() + timedelta(days=30),  # 30 дней на чтение
+            status='active'
+        )
+
+        # уменьшаем количество доступных экземпляров
+        book.copies_available -= 1
+
+        db.session.add(loan)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'loan_id': loan.id,
+            'due_date': loan.due_date.strftime('%Y-%m-%d')
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/loan/return/<int:loan_id>', methods=['POST'])
+def return_loan(loan_id):
+    """Вернуть книгу"""
+    try:
+        loan = Loan.query.get(loan_id)
+        if not loan:
+            return jsonify({'error': 'Выдача не найдена'}), 404
+
+        if loan.status != 'active':
+            return jsonify({'error': 'Книга уже возвращена'}), 400
+
+        # обновляем статус выдачи
+        loan.return_date = datetime.utcnow()
+        loan.status = 'returned'
+
+        # увеличиваем количество доступных экземпляров
+        book = Book.query.get(loan.book_id)
+        book.copies_available += 1
+
+        db.session.commit()
+
+        # проверяем была ли просрочка
+        is_overdue = loan.return_date > loan.due_date
+        days_overdue = (loan.return_date - loan.due_date).days if is_overdue else 0
+
+        return jsonify({
+            'success': True,
+            'return_date': loan.return_date.strftime('%Y-%m-%d'),
+            'was_overdue': is_overdue,
+            'days_overdue': days_overdue
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+# Экспорт всей базы данных
+
+@app.route('/api/export/database/sql')
+def export_database_sql():
+    """Экспорт БД в SQL dump"""
+    try:
+        # используем pg_dump через docker exec
+        import subprocess
+
+        result = subprocess.run(
+            ['docker', 'exec', 'library_db', 'pg_dump', '-U', 'library_user', 'library_db'],
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Ошибка экспорта БД'}), 500
+
+        # отправляем SQL dump
+        buffer = io.BytesIO(result.stdout.encode('utf-8'))
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            mimetype='application/sql',
+            as_attachment=True,
+            download_name=f'library_backup_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.sql'
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/export/database/csv')
+def export_database_csv():
+    """Экспорт всех таблиц в CSV архив"""
+    try:
+        # создаём временную директорию
+        temp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(temp_dir, 'database_export.zip')
+
+        # список таблиц для экспорта
+        tables = {
+            'books': Book.query.all(),
+            'authors': Author.query.all(),
+            'readers': Reader.query.all(),
+            'loans': Loan.query.all(),
+            'publishers': Publisher.query.all(),
+            'book_authors': BookAuthor.query.all()
+        }
+
+        # создаём ZIP архив
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for table_name, records in tables.items():
+                if not records:
+                    continue
+
+                # конвертируем в DataFrame
+                data = []
+                for record in records:
+                    row = {}
+                    for column in record.__table__.columns:
+                        value = getattr(record, column.name)
+                        # конвертируем datetime в строку
+                        if isinstance(value, datetime):
+                            value = value.strftime('%Y-%m-%d %H:%M:%S')
+                        row[column.name] = value
+                    data.append(row)
+
+                df = pd.DataFrame(data)
+
+                # сохраняем в CSV
+                csv_path = os.path.join(temp_dir, f'{table_name}.csv')
+                df.to_csv(csv_path, index=False, encoding='utf-8-sig')
+
+                # добавляем в архив
+                zipf.write(csv_path, f'{table_name}.csv')
+
+        # отправляем архив
+        return send_file(
+            zip_path,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'library_csv_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.zip'
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/export/database/sqlite')
+def export_database_sqlite():
+    """Экспорт БД в SQLite файл"""
+    try:
+        import sqlite3
+
+        # создаём временный SQLite файл
+        temp_dir = tempfile.mkdtemp()
+        sqlite_path = os.path.join(temp_dir, 'library.db')
+
+        conn = sqlite3.connect(sqlite_path)
+        cursor = conn.cursor()
+
+        # создаём таблицы
+        cursor.execute('''
+            CREATE TABLE publishers (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                city TEXT,
+                country TEXT
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE authors (
+                id INTEGER PRIMARY KEY,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                birth_year INTEGER,
+                country TEXT
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE books (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                isbn TEXT UNIQUE,
+                publication_year INTEGER,
+                pages INTEGER,
+                copies_total INTEGER DEFAULT 1,
+                copies_available INTEGER DEFAULT 1,
+                publisher_id INTEGER,
+                genre TEXT,
+                FOREIGN KEY (publisher_id) REFERENCES publishers(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE readers (
+                id INTEGER PRIMARY KEY,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                email TEXT UNIQUE,
+                phone TEXT,
+                address TEXT,
+                registration_date TEXT
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE loans (
+                id INTEGER PRIMARY KEY,
+                book_id INTEGER NOT NULL,
+                reader_id INTEGER NOT NULL,
+                loan_date TEXT NOT NULL,
+                due_date TEXT NOT NULL,
+                return_date TEXT,
+                status TEXT DEFAULT 'active',
+                FOREIGN KEY (book_id) REFERENCES books(id),
+                FOREIGN KEY (reader_id) REFERENCES readers(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE book_authors (
+                id INTEGER PRIMARY KEY,
+                book_id INTEGER NOT NULL,
+                author_id INTEGER NOT NULL,
+                FOREIGN KEY (book_id) REFERENCES books(id),
+                FOREIGN KEY (author_id) REFERENCES authors(id)
+            )
+        ''')
+
+        # копируем данные из PostgreSQL
+        # Publishers
+        for pub in Publisher.query.all():
+            cursor.execute('INSERT INTO publishers VALUES (?, ?, ?, ?)',
+                         (pub.id, pub.name, pub.city, pub.country))
+
+        # Authors
+        for author in Author.query.all():
+            cursor.execute('INSERT INTO authors VALUES (?, ?, ?, ?, ?)',
+                         (author.id, author.first_name, author.last_name,
+                          author.birth_year, author.country))
+
+        # Books
+        for book in Book.query.all():
+            cursor.execute('INSERT INTO books VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (book.id, book.title, book.isbn, book.publication_year,
+                          book.pages, book.copies_total, book.copies_available,
+                          book.publisher_id, book.genre))
+
+        # Readers
+        for reader in Reader.query.all():
+            reg_date = reader.registration_date.strftime('%Y-%m-%d %H:%M:%S') if reader.registration_date else None
+            cursor.execute('INSERT INTO readers VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         (reader.id, reader.first_name, reader.last_name,
+                          reader.email, reader.phone, reader.address, reg_date))
+
+        # Loans
+        for loan in Loan.query.all():
+            loan_date = loan.loan_date.strftime('%Y-%m-%d %H:%M:%S') if loan.loan_date else None
+            due_date = loan.due_date.strftime('%Y-%m-%d %H:%M:%S') if loan.due_date else None
+            return_date = loan.return_date.strftime('%Y-%m-%d %H:%M:%S') if loan.return_date else None
+            cursor.execute('INSERT INTO loans VALUES (?, ?, ?, ?, ?, ?, ?)',
+                         (loan.id, loan.book_id, loan.reader_id,
+                          loan_date, due_date, return_date, loan.status))
+
+        # BookAuthors
+        for ba in BookAuthor.query.all():
+            cursor.execute('INSERT INTO book_authors VALUES (?, ?, ?)',
+                         (ba.id, ba.book_id, ba.author_id))
+
+        conn.commit()
+        conn.close()
+
+        # отправляем SQLite файл
+        return send_file(
+            sqlite_path,
+            mimetype='application/x-sqlite3',
+            as_attachment=True,
+            download_name=f'library_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.db'
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -20,3 +20,5 @@ instance/
 htmlcov/
 ngrok.log
 app/__pycache__/
+INTERVIEW_PREP.md
+DEMO_SCENARIO.md
