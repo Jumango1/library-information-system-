@@ -3,6 +3,7 @@ from flask_migrate import Migrate
 from models import db, Book, Author, Reader, Loan, Publisher, BookAuthor
 from config import Config
 from datetime import datetime, timedelta
+from sqlalchemy import text
 import io
 import os
 import zipfile
@@ -492,20 +493,76 @@ def return_loan(loan_id):
 def export_database_sql():
     """Экспорт БД в SQL dump"""
     try:
-        # используем pg_dump через docker exec
-        import subprocess
+        # генерируем SQL dump вручную, т.к. pg_dump недоступен изнутри контейнера
+        output = io.StringIO()
 
-        result = subprocess.run(
-            ['docker', 'exec', 'library_db', 'pg_dump', '-U', 'library_user', 'library_db'],
-            capture_output=True,
-            text=True
-        )
+        # заголовок
+        output.write("-- PostgreSQL database dump\n")
+        output.write("-- Dumped from library_db\n\n")
+        output.write("SET statement_timeout = 0;\n")
+        output.write("SET lock_timeout = 0;\n")
+        output.write("SET client_encoding = 'UTF8';\n\n")
 
-        if result.returncode != 0:
-            return jsonify({'error': 'Ошибка экспорта БД'}), 500
+        # дампим каждую таблицу
+        tables = ['publishers', 'authors', 'books', 'readers', 'loans', 'book_authors']
 
-        # отправляем SQL dump
-        buffer = io.BytesIO(result.stdout.encode('utf-8'))
+        for table in tables:
+            output.write(f"\n-- Table: {table}\n")
+
+            # получаем структуру таблицы
+            result = db.session.execute(text(f"""
+                SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
+                FROM information_schema.columns
+                WHERE table_name = '{table}'
+                ORDER BY ordinal_position
+            """))
+
+            columns = result.fetchall()
+
+            # CREATE TABLE
+            output.write(f"DROP TABLE IF EXISTS {table} CASCADE;\n")
+            output.write(f"CREATE TABLE {table} (\n")
+
+            col_defs = []
+            for col in columns:
+                col_name, data_type, max_len, nullable, default = col
+                col_def = f"    {col_name} {data_type}"
+                if max_len:
+                    col_def += f"({max_len})"
+                if nullable == 'NO':
+                    col_def += " NOT NULL"
+                if default:
+                    col_def += f" DEFAULT {default}"
+                col_defs.append(col_def)
+
+            output.write(",\n".join(col_defs))
+            output.write("\n);\n\n")
+
+            # INSERT данные
+            rows = db.session.execute(text(f"SELECT * FROM {table}")).fetchall()
+            if rows:
+                col_names = [col[0] for col in columns]
+                output.write(f"INSERT INTO {table} ({', '.join(col_names)}) VALUES\n")
+
+                values = []
+                for row in rows:
+                    row_values = []
+                    for val in row:
+                        if val is None:
+                            row_values.append('NULL')
+                        elif isinstance(val, str):
+                            row_values.append(f"'{val.replace(chr(39), chr(39)+chr(39))}'")
+                        else:
+                            row_values.append(str(val))
+                    values.append(f"({', '.join(row_values)})")
+
+                output.write(",\n".join(values))
+                output.write(";\n\n")
+
+        sql_dump = output.getvalue()
+        output.close()
+
+        buffer = io.BytesIO(sql_dump.encode('utf-8'))
         buffer.seek(0)
 
         return send_file(
